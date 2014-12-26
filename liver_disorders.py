@@ -12,10 +12,11 @@ from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import roc_curve, auc
+from sklearn.metrics import accuracy_score, roc_auc_score
 
 import pylab as pl
 import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
 
 dirs = ['data_plot', 'test_plot']
 
@@ -68,7 +69,57 @@ def plot_box_by_class():
         p = df.boxplot(by='class', ax = f.gca())
         f.savefig('./%s/box_%s_class.png' % (dirs[0], title[k]))
 
+def roc_plot():
+    data, class_names = get_analyze_data()
+    target = data[6]
+    train = data.drop(['id', 6], axis = 1)
+
+    model_rfc = RandomForestClassifier(n_estimators = 100, criterion = "entropy", n_jobs = -1)
+    model_knc = KNeighborsClassifier(n_neighbors = 10, algorithm = 'brute')
+    model_gbc = GradientBoostingClassifier(n_estimators = 100)
+    model_lr = LogisticRegression(penalty='l1', tol=0.01)
+
+    ROCtrainTRN, ROCtestTRN, ROCtrainTRG, ROCtestTRG = cross_validation.train_test_split(train, target, test_size=0.25)
+
+    print 'ROC...'
+
+    pl.clf()
+    plt.figure(figsize=(8,6))
+
+    # RandomForestClassifier
+    probas = model_rfc.fit(ROCtrainTRN, ROCtrainTRG).predict_proba(ROCtestTRN)
+    fpr, tpr, thresholds = roc_curve(ROCtestTRG, probas[:, 1])
+    roc_auc  = auc(fpr, tpr)
+    pl.plot(fpr, tpr, label='%s ROC (area = %0.2f)' % ('RandomForest',roc_auc))
+
+    # GradientBoostingClassifier
+    probas = model_gbc.fit(ROCtrainTRN, ROCtrainTRG).predict_proba(ROCtestTRN)
+    fpr, tpr, thresholds = roc_curve(ROCtestTRG, probas[:, 1])
+    roc_auc  = auc(fpr, tpr)
+    pl.plot(fpr, tpr, label='%s ROC (area = %0.2f)' % ('GradientBoosting',roc_auc))
+
+    # KNeighborsClassifier
+    probas = model_knc.fit(ROCtrainTRN, ROCtrainTRG).predict_proba(ROCtestTRN)
+    fpr, tpr, thresholds = roc_curve(ROCtestTRG, probas[:, 1])
+    roc_auc  = auc(fpr, tpr)
+    pl.plot(fpr, tpr, label='%s ROC (area = %0.2f)' % ('KNeighborsClassifier',roc_auc))
+
+    # LogisticRegression
+    probas = model_lr.fit(ROCtrainTRN, ROCtrainTRG).predict_proba(ROCtestTRN)
+    fpr, tpr, thresholds = roc_curve(ROCtestTRG, probas[:, 1])
+    roc_auc  = auc(fpr, tpr)
+    pl.plot(fpr, tpr, label='%s ROC (area = %0.2f)' % ('LogisticRegression',roc_auc))
+
+    pl.plot([0, 1], [0, 1], 'k--')
+    pl.xlim([0.0, 1.0])
+    pl.ylim([0.0, 1.0])
+    pl.xlabel('False Positive Rate')
+    pl.ylabel('True Positive Rate')
+    pl.legend(loc=0, fontsize='small')
+    pl.savefig('./%s/roc.png' % dirs[1])
+
 start()
 plot_sgpt_sgot()
 plot_count_by_class()
 plot_box_by_class()
+roc_plot()
