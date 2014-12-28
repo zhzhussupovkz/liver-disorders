@@ -118,8 +118,45 @@ def roc_plot():
     pl.legend(loc=0, fontsize='small')
     pl.savefig('./%s/roc.png' % dirs[1])
 
+def roc_plot_rfc_gbc():
+    data, class_names = get_analyze_data()
+    target = data[6]
+    train = data.drop(['id', 6], axis = 1)
+
+    model_rfc = RandomForestClassifier(n_estimators = 625, criterion = "entropy", n_jobs = -1)
+    model_gbc = GradientBoostingClassifier(n_estimators = 625)
+
+    ROCtrainTRN, ROCtestTRN, ROCtrainTRG, ROCtestTRG = cross_validation.train_test_split(train, target, test_size=0.25)
+
+    print 'ROC...'
+
+    pl.clf()
+    plt.figure(figsize=(8,6))
+
+    # RandomForestClassifier
+    probas = model_rfc.fit(ROCtrainTRN, ROCtrainTRG).predict_proba(ROCtestTRN)
+    fpr, tpr, thresholds = roc_curve(ROCtestTRG, probas[:, 1])
+    roc_auc  = auc(fpr, tpr)
+    pl.plot(fpr, tpr, label='%s ROC (area = %0.2f)' % ('RandomForest',roc_auc))
+
+    # GradientBoostingClassifier
+    probas = model_gbc.fit(ROCtrainTRN, ROCtrainTRG).predict_proba(ROCtestTRN)
+    fpr, tpr, thresholds = roc_curve(ROCtestTRG, probas[:, 1])
+    roc_auc  = auc(fpr, tpr)
+    pl.plot(fpr, tpr, label='%s ROC (area = %0.2f)' % ('GradientBoosting',roc_auc))
+
+    pl.plot([0, 1], [0, 1], 'k--')
+    pl.xlim([0.0, 1.0])
+    pl.ylim([0.0, 1.0])
+    pl.xlabel('False Positive Rate')
+    pl.ylabel('True Positive Rate')
+    pl.legend(loc=0, fontsize='small')
+    pl.savefig('./%s/roc_rfc_gbc.png' % dirs[1])
+
+
 start()
 plot_sgpt_sgot()
 plot_count_by_class()
 plot_box_by_class()
 roc_plot()
+roc_plot_rfc_gbc()
